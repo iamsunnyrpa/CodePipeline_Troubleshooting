@@ -1,0 +1,55 @@
+1. Custom Actions in CodePipeline    
+
+Job Handling: To manage custom action jobs, use the following AWS CLI commands:
+Poll for jobs: aws codepipeline poll-for-jobs --action-type-id category=<Category>,provider=<Provider>,owner=<Owner>,version=<Version>    
+Acknowledge jobs: aws codepipeline acknowledge-job --job-id <JobID> --nonce <Nonce>    
+Report success: aws codepipeline put-job-success-result --job-id <JobID>    
+Delete custom action types: aws codepipeline delete-custom-action-type --category <Category> --provider <Provider> --version <Version>    
+Secret Parameters: Parameters configured with the secret attribute are only visible via specific API calls: GetJobDetails, GetThirdPartyJobDetails, PollForJobs, and PollForThirdPartyJobs.  
+
+2. CodePipeline with AWS CloudFormation (CFN)    
+
+When provisioning CodePipeline using CloudFormation, an EventBridge rule is necessary to trigger the pipeline upon changes to its definition.   
+
+3. Cross-Account Deployments    
+
+Encryption: Always utilize customer-managed KMS keys for encryption in cross-account CodePipeline configurations.
+Ensure the KMS key policy grants necessary permissions to users/roles in the target account.   
+  
+Source Account (Pipeline Location) Configuration: 
+S3 Bucket Permissions: Modify the S3 artifact bucket policy to allow the target account to retrieve artifacts. Include policies to enforce encryption (e.g., SSE-KMS) and secure transport (HTTPS). Grant s3:Get*, s3:Put*, and s3:ListBucket permissions to the target account's root principal.   
+KMS Key Permissions: Add the CodePipeline IAM role and the target account to the KMS key policy. Ensure the CodePipeline itself is configured to use this custom KMS key.   
+CodePipeline Role Permissions: Attach a policy allowing the CodePipeline role to assume roles in the target account (sts:AssumeRole action).   
+  
+Target Account (Deployment Location) Configuration:
+CodeDeploy Instance Profile Permissions: Grant the instance profile permissions to use the source account's KMS key (kms:DescribeKey, kms:GenerateDataKey*, kms:Encrypt, kms:ReEncrypt*, kms:Decrypt).   
+Cross-Account IAM Role: Create an IAM role trusted by the source account. Attach policies granting permissions to manage CodeDeploy (codedeploy:CreateDeployment, codedeploy:GetDeployment, etc.) and access the S3 artifact bucket (s3:GetObject*, s3:PutObject, s3:PutObjectAcl).   
+Updating the Pipeline:
+Retrieve the pipeline definition: aws codepipeline get-pipeline --name <PipelineName> > pipeline.json.   
+Edit the pipeline.json file: Add the roleArn of the cross-account role created in the target account to the relevant stage configuration. Remove the metadata section.   
+Update the pipeline: aws codepipeline update-pipeline --cli-input-json file://pipeline.json.   
+Cross-Region/Cross-Account Sources: Using a source from a different region and a different account is not supported. Sources must reside in the same region as the pipeline for cross-account scenarios.   
+
+4. Minimum Permissions for CodeCommit Source
+
+The CodePipeline role requires at least the following CodeCommit permissions: codecommit:GetBranch, codecommit:GetCommit, codecommit:UploadArchive, codecommit:GetUploadArchiveStatus.  
+
+5. CodePipeline with Amazon ECS Deployments
+
+An imagedefinitions.json file specifying the container name and image URI is required.   
+The deployment process involves DescribeServices and RegisterTaskDefinition API calls.   
+
+6. S3 Deploy Action Considerations (Cross-Account)
+
+ACL Requirement: When deploying artifacts to an S3 bucket in a different account, the bucket-owner-full-control ACL is mandatory for the objects being put into the bucket. Other ACLs like bucket-owner-read, private, public-read, or public-read-write are insufficient for cross-account deployments.   
+Ensure the source repository and the CodePipeline reside in the same AWS region, even if the target S3 bucket is in another account but the same region.   
+
+7. CodePipeline with AWS Lambda Deployment    
+
+The Lambda function's execution role requires permissions to:
+Write logs (logs:*).   
+Report job status back to CodePipeline (codepipeline:PutJobSuccessResult, codepipeline:PutJobFailureResult).  
+
+8. Environment Variables
+
+Pipeline execution context variables like #{codepipeline.PipelineExecutionId} and #{SourceVariables.CommitId} can be used, for example, in CloudFormation stack names.
