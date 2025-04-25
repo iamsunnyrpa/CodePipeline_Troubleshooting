@@ -1,0 +1,12 @@
+1. CloudFormation: 
+When managing CodePipeline via CloudFormation, an EventBridge (CloudWatch Events) rule might be needed to trigger the pipeline upon changes to its definition.   
+
+2. ECS Deployment:
+Requires an imagedefinitions.json file specifying container name and image URI.   
+Key API calls involved include DescribeServices and RegisterTaskDefinition.   
+
+3. S3 Deployment Action (Cross-Account):
+When deploying to an S3 bucket in another account, the bucket-owner-full-control canned ACL is typically required for objects put by CodePipeline. Other ACLs may not grant sufficient cross-account permissions. Ensure no conflicting ACLs are present.   
+
+4. Environment Variables: 
+You can use variables like #{codepipeline.PipelineExecutionId} and #{SourceVariables.CommitId} within pipeline actions, for instance, in CloudFormation stack names
