@@ -1,0 +1,35 @@
+Setting up pipelines that interact with resources in different AWS accounts requires careful configuration of permissions and resources.
+
+--> Prerequisites:
+
+1. KMS Encryption: 
+Always use customer-managed KMS keys for encrypting pipeline artifacts when configuring cross-account access. Ensure the KMS key policy grants usage permission to the necessary IAM roles/users in both accounts and allows cross-account access.   
+
+2. Source Region: 
+When using a source from a different account (e.g., S3 bucket, CodeCommit repo), the source must reside in the same AWS region as the CodePipeline itself. Cross-region and cross-account sources are not supported.   
+
+## Account A (Pipeline Account):
+1. S3 Artifact Bucket Policy: 
+Modify the policy of the CodePipeline artifact S3 bucket to grant access to the target account (Account B). This typically involves allowing s3:Get* and s3:Put* actions for the root of Account B or specific IAM roles/principals. Enforce encryption (e.g., aws:kms) and secure transport (HTTPS).   
+
+2. CodePipeline Role Permissions: 
+Attach a policy to the CodePipeline service role allowing it to assume roles in Account B (sts:AssumeRole).   
+
+## Account B (Target/Action Account):
+1. Cross-Account IAM Role: 
+Create an IAM role specifically for CodePipeline actions (e.g., CodeDeploy deployment).
+
+2. Trust Policy: 
+Configure the trust policy to allow the CodePipeline service role ARN from Account A to assume this role.
+
+3. Permissions Policy: 
+Grant this role the necessary permissions to perform actions in Account B (e.g., codedeploy:* actions, s3:GetObject*, s3:PutObject* for accessing artifacts).   
+
+4. CodeDeploy Instance Profile Permissions (if applicable): 
+If CodeDeploy is used, the EC2 instance profile in Account B needs permissions to access the KMS key from Account A (kms:Decrypt, kms:DescribeKey, etc.).   
+
+5.Pipeline Definition Update:
+Retrieve the pipeline structure using aws codepipeline get-pipeline.   
+Edit the resulting JSON file (pipeline.json). Add the roleArn field, specifying the ARN of the cross-account role created in Account B, to the relevant stage configuration.   
+Remove the metadata section from the JSON.   
+Update the pipeline using aws codepipeline update-pipeline with the modified JSON file.
