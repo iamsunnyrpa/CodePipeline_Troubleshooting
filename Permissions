@@ -1,0 +1,5 @@
+CodeCommit Source: 
+Minimum permissions for a CodePipeline role using a CodeCommit source include: codecommit:GetBranch, codecommit:GetCommit, codecommit:UploadArchive, codecommit:GetUploadArchiveStatus.
+
+Lambda Deployment Action: 
+A Lambda function invoked by CodePipeline requires permissions to report job status (codepipeline:PutJobSuccessResult, codepipeline:PutJobFailureResult) and potentially other service permissions (e.g., logs:* for logging).
